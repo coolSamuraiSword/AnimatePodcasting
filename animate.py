@@ -37,6 +37,8 @@ try:
     from src.generator import ImageGenerator
     from src.project_notion import ProjectNotionManager
     from src.cache_manager import CacheManager
+    from src.performance import PerformanceTracker, track, track_operation
+    from src.error_handler import ErrorHandler, handle_errors, error_context, ErrorType, ErrorSeverity, RecoveryStrategy
 except ImportError as e:
     print(f"Error importing project modules: {e}")
     print("Make sure you're running this script from the project root directory.")
@@ -493,6 +495,314 @@ def show_version():
     
     console.print(version_table)
 
+@app.command("performance")
+def manage_performance(
+    report: bool = typer.Option(True, "--report", help="Show performance report"),
+    save: Optional[str] = typer.Option(None, "--save", "-s", help="Save performance report to file"),
+    reset: bool = typer.Option(False, "--reset", help="Reset performance metrics"),
+    benchmark: bool = typer.Option(False, "--benchmark", help="Run a benchmark test suite")
+):
+    """Monitor and analyze application performance."""
+    from src.performance import default_tracker
+    
+    if reset:
+        with console.status("[bold blue]Resetting performance metrics...", spinner="dots"):
+            default_tracker.reset()
+            console.print("[bold green]Performance metrics reset![/]")
+    
+    if benchmark:
+        # Run a simple benchmark test suite
+        console.print("[bold blue]Running benchmark test suite...[/]")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(),
+            TimeElapsedColumn(),
+            console=console
+        ) as progress:
+            task = progress.add_task("[bold blue]Running benchmarks...", total=3)
+            
+            # Benchmark transcription
+            progress.update(task, description="[bold blue]Benchmarking transcription...")
+            try:
+                transcriber = WhisperTranscriber(model_size="tiny")
+                test_file = "data/sample_audio.mp3"
+                
+                if not os.path.exists(test_file):
+                    # Create a dummy test file if needed
+                    console.print(f"[yellow]Test file {test_file} not found. Creating dummy file...[/]")
+                    os.makedirs("data", exist_ok=True)
+                    with open(test_file, "w") as f:
+                        f.write("Dummy test file")
+                
+                result = default_tracker.benchmark(
+                    transcriber.transcribe,
+                    test_file,
+                    iterations=2  # Using fewer iterations for speed
+                )
+                console.print(f"[green]Transcription benchmark completed: avg={result['average_time']:.2f}s[/]")
+            except Exception as e:
+                console.print(f"[bold red]Error running transcription benchmark: {e}[/]")
+            
+            progress.update(task, advance=1)
+            
+            # Benchmark content analysis
+            progress.update(task, description="[bold blue]Benchmarking content analysis...")
+            try:
+                analyzer = ContentAnalyzer()
+                mock_transcription = {"text": "This is a test transcription for benchmarking", "segments": [{"text": "This is a test."}]}
+                
+                result = default_tracker.benchmark(
+                    analyzer.extract_key_segments,
+                    mock_transcription,
+                    iterations=3
+                )
+                console.print(f"[green]Analysis benchmark completed: avg={result['average_time']:.2f}s[/]")
+            except Exception as e:
+                console.print(f"[bold red]Error running analysis benchmark: {e}[/]")
+                
+            progress.update(task, advance=1)
+            
+            # Benchmark image generation (simplified)
+            progress.update(task, description="[bold blue]Benchmarking internal operations...")
+            try:
+                # Simulate an operation for benchmarking
+                def test_operation():
+                    time.sleep(0.1)  # Simulate work
+                    return True
+                
+                result = default_tracker.benchmark(
+                    test_operation,
+                    iterations=5
+                )
+                console.print(f"[green]Internal benchmark completed: avg={result['average_time']:.2f}s[/]")
+            except Exception as e:
+                console.print(f"[bold red]Error running internal benchmark: {e}[/]")
+                
+            progress.update(task, advance=1)
+    
+    if report:
+        # Generate and display performance report
+        report_data = default_tracker.get_report()
+        
+        # Display function statistics
+        if report_data["function_stats"]:
+            func_table = Table(title="Function Performance")
+            func_table.add_column("Function", style="cyan")
+            func_table.add_column("Calls", style="blue")
+            func_table.add_column("Avg Time (s)", style="green")
+            func_table.add_column("Min Time (s)", style="green")
+            func_table.add_column("Max Time (s)", style="green")
+            func_table.add_column("Success %", style="yellow")
+            
+            for func_name, stats in report_data["function_stats"].items():
+                func_table.add_row(
+                    func_name,
+                    str(stats["calls"]),
+                    f"{stats['average_time']:.4f}",
+                    f"{stats['min_time']:.4f}",
+                    f"{stats['max_time']:.4f}",
+                    f"{stats['success_rate']:.1f}%"
+                )
+            
+            console.print(func_table)
+        else:
+            console.print("[yellow]No function performance data available yet.[/]")
+        
+        # Display operation statistics
+        if report_data["operation_stats"]:
+            op_table = Table(title="Operation Performance")
+            op_table.add_column("Operation", style="cyan")
+            op_table.add_column("Executions", style="blue")
+            op_table.add_column("Avg Time (s)", style="green")
+            op_table.add_column("Min Time (s)", style="green")
+            op_table.add_column("Max Time (s)", style="green")
+            op_table.add_column("Success %", style="yellow")
+            
+            for op_name, stats in report_data["operation_stats"].items():
+                op_table.add_row(
+                    op_name,
+                    str(stats["executions"]),
+                    f"{stats['average_time']:.4f}",
+                    f"{stats['min_time']:.4f}",
+                    f"{stats['max_time']:.4f}",
+                    f"{stats['success_rate']:.1f}%"
+                )
+            
+            console.print(op_table)
+        else:
+            console.print("[yellow]No operation performance data available yet.[/]")
+        
+        # Display benchmark summary
+        if report_data["benchmark_summary"]:
+            bench_table = Table(title="Benchmark Results")
+            bench_table.add_column("Function", style="cyan")
+            bench_table.add_column("Iterations", style="blue")
+            bench_table.add_column("Avg Time (s)", style="green")
+            bench_table.add_column("Min Time (s)", style="green")
+            bench_table.add_column("Max Time (s)", style="green")
+            
+            for bench in report_data["benchmark_summary"]:
+                bench_table.add_row(
+                    bench["function"],
+                    str(bench["iterations"]),
+                    f"{bench['average_time']:.4f}",
+                    f"{bench['min_time']:.4f}",
+                    f"{bench['max_time']:.4f}"
+                )
+            
+            console.print(bench_table)
+    
+    if save:
+        with console.status(f"[bold blue]Saving performance report to {save}...", spinner="dots"):
+            default_tracker.save_report(save)
+            console.print(f"[bold green]Performance report saved to {save}![/]")
+
+@app.command("errors")
+def manage_errors(
+    report: bool = typer.Option(True, "--report", help="Show error report"),
+    save: Optional[str] = typer.Option(None, "--save", "-s", help="Save error report to file"),
+    clear: bool = typer.Option(False, "--clear", help="Clear error history"),
+    test: bool = typer.Option(False, "--test", help="Run a test with different error scenarios")
+):
+    """Manage error handling and view error reports."""
+    from src.error_handler import default_handler, ErrorType, ErrorSeverity, RecoveryStrategy, ApplicationError
+    
+    if clear:
+        with console.status("[bold blue]Clearing error history...", spinner="dots"):
+            default_handler.clear_errors()
+            console.print("[bold green]Error history cleared![/]")
+    
+    if test:
+        # Run a test with different error scenarios to demonstrate the error handling system
+        console.print("[bold blue]Running error handling tests...[/]")
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            BarColumn(),
+            TimeElapsedColumn(),
+            console=console
+        ) as progress:
+            task = progress.add_task("[bold blue]Testing error handling...", total=3)
+            
+            # Test file system error
+            progress.update(task, description="[bold blue]Testing file system error...")
+            try:
+                with default_handler.error_context(
+                    "file_operation",
+                    error_types=[FileNotFoundError],
+                    error_type=ErrorType.FILE_SYSTEM,
+                    severity=ErrorSeverity.WARNING
+                ):
+                    # Intentionally try to open a non-existent file
+                    with open("non_existent_file.txt", "r") as f:
+                        content = f.read()
+                
+                console.print("[bold red]Test failed: Expected error was not raised[/]")
+            except Exception as e:
+                console.print("[green]File system error test completed successfully[/]")
+            
+            progress.update(task, advance=1)
+            
+            # Test retry strategy
+            progress.update(task, description="[bold blue]Testing retry strategy...")
+            
+            # Define a function that fails the first time but succeeds on second attempt
+            attempt_count = [0]
+            
+            @default_handler.with_error_handling(
+                error_types=[ValueError],
+                recovery_strategy=RecoveryStrategy.RETRY,
+                error_type=ErrorType.DATA,
+                severity=ErrorSeverity.WARNING
+            )
+            def test_retry_function():
+                attempt_count[0] += 1
+                if attempt_count[0] == 1:
+                    raise ValueError("First attempt always fails")
+                return "Success on retry"
+            
+            result = test_retry_function()
+            if result == "Success on retry" and attempt_count[0] > 1:
+                console.print("[green]Retry strategy test completed successfully[/]")
+            else:
+                console.print("[bold red]Retry strategy test failed[/]")
+            
+            progress.update(task, advance=1)
+            
+            # Test custom application error
+            progress.update(task, description="[bold blue]Testing custom error...")
+            
+            try:
+                # Create and log a custom application error
+                error = ApplicationError(
+                    "This is a test error",
+                    error_type=ErrorType.MODEL,
+                    severity=ErrorSeverity.INFO,
+                    recovery_strategy=RecoveryStrategy.NONE,
+                    context={"test": True, "purpose": "demonstration"}
+                )
+                default_handler.handle_error(error)
+                console.print("[green]Custom error test completed successfully[/]")
+            except Exception as e:
+                console.print(f"[bold red]Custom error test failed: {e}[/]")
+                
+            progress.update(task, advance=1)
+    
+    if report:
+        # Generate and display error report
+        report_data = default_handler.get_error_report()
+        
+        if report_data["total_errors"] > 0:
+            # Display error summary
+            summary_table = Table(title="Error Summary")
+            summary_table.add_column("Category", style="cyan")
+            summary_table.add_column("Count", style="yellow")
+            
+            summary_table.add_row("Total Errors", str(report_data["total_errors"]))
+            
+            for error_type, count in report_data["error_counts_by_type"].items():
+                if count > 0:
+                    summary_table.add_row(f"Type: {error_type}", str(count))
+            
+            for severity, count in report_data["error_counts_by_severity"].items():
+                if count > 0:
+                    summary_table.add_row(f"Severity: {severity}", str(count))
+            
+            console.print(summary_table)
+            
+            # Display detailed error list
+            errors_table = Table(title="Recent Errors")
+            errors_table.add_column("Time", style="blue")
+            errors_table.add_column("Type", style="cyan")
+            errors_table.add_column("Severity", style="yellow")
+            errors_table.add_column("Message", style="red")
+            errors_table.add_column("Recovery", style="green")
+            
+            # Show the 10 most recent errors
+            for error in report_data["errors"][-10:]:
+                # Format timestamp
+                timestamp = error["timestamp"].split("T")[1].split(".")[0]  # Extract time
+                
+                errors_table.add_row(
+                    timestamp,
+                    error["error_type"],
+                    error["severity"],
+                    error["message"][:50] + ("..." if len(error["message"]) > 50 else ""),
+                    error["recovery_strategy"]
+                )
+            
+            console.print(errors_table)
+        else:
+            console.print("[green]No errors have been recorded.[/]")
+    
+    if save:
+        with console.status(f"[bold blue]Saving error report to {save}...", spinner="dots"):
+            default_handler.save_error_report(save)
+            console.print(f"[bold green]Error report saved to {save}![/]")
+
 @app.callback()
 def main():
     """
@@ -503,11 +813,34 @@ def main():
 [bold cyan]    _          _                 _       ___          _                  _   _             
    / \\   _ __ (_)_ __ ___   __ _| |_ ___|  _ \\ ___  __| | ___ __ _ ___| |_(_)_ __   __ _ 
   / _ \\ | '_ \\| | '_ ` _ \\ / _` | __/ _ \\ |_) / _ \\/ _` |/ __/ _` / __| __| | '_ \\ / _` |
- / ___ \\| | | | | | | | | | (_| | ||  __/  __/ (_) | (_| | (_| (_| \\__ \\ |_| | | | | (_| |
+ / ___ \\| | | | | | | | | | | (_| | ||  __/  __/ (_) | (_| | (_| (_| \\__ \\ |_| | | | | (_| |
 /_/   \\_\\_| |_|_|_| |_| |_|\\__,_|\\__\\___|_|   \\___/ \\__,_|\\___\\__,_|___/\\__|_|_| |_|\\__, |
                                                                                      |___/ [/]
     """
     console.print(banner)
 
 if __name__ == "__main__":
-    app() 
+    # Create logs directory if it doesn't exist
+    os.makedirs("logs", exist_ok=True)
+    
+    # Add exception handler for uncaught exceptions
+    try:
+        app()
+    except Exception as e:
+        if "default_handler" in sys.modules.get("src.error_handler", {}).__dict__:
+            # Try to use our error handler for uncaught exceptions
+            from src.error_handler import default_handler, ErrorType, ErrorSeverity
+            default_handler.handle_error(
+                e, 
+                context={"location": "main_app_entry"},
+                recovery_strategy=RecoveryStrategy.NONE
+            )
+        
+        # Display error in a nice format
+        console.print("")
+        console.print(Panel(
+            f"[bold red]Error:[/] {str(e)}\n\n[dim]{traceback.format_exc()}[/dim]",
+            title="Unhandled Exception",
+            border_style="red"
+        ))
+        sys.exit(1) 
