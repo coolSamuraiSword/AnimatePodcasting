@@ -13,6 +13,8 @@ Generate animated videos from podcast audio using AI-powered transcription, cont
 - **Notion Integration**: Track project progress in Notion workspace
 - **Performance Monitoring**: Track and benchmark performance of critical operations
 - **Error Handling & Recovery**: Robust error handling with automatic recovery strategies
+- **Testing Framework**: Comprehensive test suite with rich reporting
+- **Docker Support**: Easy containerization for consistent deployment
 
 ## Setup
 
@@ -59,6 +61,39 @@ The project provides a beautiful command-line interface:
 ./animate.py errors --report
 ./animate.py errors --test
 ```
+
+## Testing
+
+The project includes a comprehensive test suite to ensure reliability:
+
+```bash
+# Run all tests with beautiful reporting
+./run_tests.py
+
+# Run specific test file
+python -m unittest tests/test_performance.py
+
+# Run with coverage report
+coverage run -m unittest discover tests
+coverage report
+```
+
+## Docker
+
+The project can be easily containerized using Docker:
+
+```bash
+# Build Docker image
+./docker_build.sh
+
+# Run with Docker Compose
+docker-compose up
+
+# Run specific command in container
+docker run -it --rm -v $(pwd)/data:/app/data -v $(pwd)/outputs:/app/outputs animate_podcasting:latest transcribe data/your_audio.mp3
+```
+
+See [Docker Usage Guide](docs/docker.md) for more details.
 
 ## Development
 

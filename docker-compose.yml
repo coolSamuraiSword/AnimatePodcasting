@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  animate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: animate_podcasting:latest
+    container_name: animate_podcasting
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+    # Default command is the version command to show it's working
+    command: ["version"]
+    # Provide interactive mode for CLI usage
+    stdin_open: true
+    tty: true
+    # Usage examples (uncomment the one you want to use):
+    
+    # Example 1: Show help
+    # command: ["--help"]
+    
+    # Example 2: Transcribe an audio file
+    # command: ["transcribe", "data/your_audio.mp3", "--model", "base"]
+    
+    # Example 3: Run full pipeline
+    # command: ["create", "data/your_audio.mp3", "--model", "base", "--num-images", "5"]
+    
+    # Example 4: Run tests
+    # entrypoint: ["./run_tests.py"]
+    
+    # Example 5: Show performance stats
+    # command: ["performance", "--report"] 
