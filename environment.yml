@@ -1,0 +1,24 @@
+name: animate_podcasting
+channels:
+  - apple
+  - conda-forge
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pip:
+    - openai-whisper
+    - sentence-transformers
+    - diffusers
+    - transformers
+    - accelerate
+    - safetensors
+    - matplotlib
+    - ffmpeg-python
+    - pillow
+    - tqdm
+    - notion-client>=2.0.0
