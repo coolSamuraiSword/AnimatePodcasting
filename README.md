@@ -20,7 +20,7 @@ Generate animated videos from podcast audio using AI-powered transcription, cont
 
 1. Clone the repository:
    ```
-   git clone <repository-url>
+   git clone https://github.com/coolSamuraiSword/AnimatePodcasting.git
    cd AnimatePodcasting
    ```
 
@@ -101,7 +101,7 @@ This project uses Git for version control. Please see [CONTRIBUTING.md](CONTRIBU
 
 ```bash
 # Clone the repository and set up the project
-git clone <repository-url>
+git clone https://github.com/coolSamuraiSword/AnimatePodcasting.git
 cd AnimatePodcasting
 
 # Create a feature branch
