@@ -11,6 +11,8 @@ Generate animated videos from podcast audio using AI-powered transcription, cont
 - **Caching System**: Improve performance with smart caching of expensive operations
 - **Beautiful CLI**: User-friendly command-line interface with rich formatting
 - **Notion Integration**: Track project progress in Notion workspace
+- **Performance Monitoring**: Track and benchmark performance of critical operations
+- **Error Handling & Recovery**: Robust error handling with automatic recovery strategies
 
 ## Setup
 
@@ -48,6 +50,37 @@ The project provides a beautiful command-line interface:
 # Cache management
 ./animate.py cache
 ./animate.py cache --clear
+
+# Performance monitoring
+./animate.py performance --benchmark
+./animate.py performance --report --save reports/performance.json
+
+# Error handling
+./animate.py errors --report
+./animate.py errors --test
+```
+
+## Development
+
+This project uses Git for version control. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+```bash
+# Clone the repository and set up the project
+git clone <repository-url>
+cd AnimatePodcasting
+
+# Create a feature branch
+git checkout -b feature/your-feature-name
+
+# Make changes and test
+./animate.py version
+
+# Commit your changes with a meaningful message
+git add -A
+git commit -m "Add feature: description of your changes"
+
+# Push changes to remote
+git push origin feature/your-feature-name
 ```
 
 ## Project Structure
